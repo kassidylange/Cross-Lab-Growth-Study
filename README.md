@@ -1,4 +1,4 @@
-# Readme: Cross Lab Growth Study code and data
+# Readme: 'Cross Lab Growth Study' code and data
 
 Publicly available code utilized in analyses for manuscript 'Comparing success across three federal facilities for optimization of mesophotic octocoral husbandry' (Lange et al, in prep). 
 
