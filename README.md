@@ -4,4 +4,4 @@ Publicly available code utilized in analyses for manuscript 'Comparing success a
 
 Data in analyses is included as .csv files in 'data' folder. R code is broken up by metric in the 'analysis' folder.
 
-Currently, data for image metrics is available. Data on microbiome, fecundity, and biochemistry are forthcoming.
+Currently, data and analyses for image metrics is available. Data and analyses on microbiome, fecundity, and biochemistry are forthcoming.
