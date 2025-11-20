@@ -305,6 +305,7 @@ write.csv(polyps_kw, file.path(out_dir, "polyps_kruskal_summary.csv"), row.names
 ```
 
 ```{r}
+                        #plotting
 lab_colors <- list(
   "Muricea pendula" = c("GAL" = "grey30", "GNV" = "grey60", "HML" = "grey80"),
   "Swiftia exserta" = c("GAL" = "#cc7a00", "GNV" = "#e69f00", "HML" = "#ffb84d"),
@@ -495,7 +496,6 @@ out_dir <- "outputs"
 if (!dir.exists(out_dir)) dir.create(out_dir)
 
 # growth data
-cat("\n================= GROWTH BETWEEN SPECIES =================\n")
 
 # test assumptions for ANOVA or Kruskal decision
 growth_model <- aov(Growth_cm ~ Species, data = data)
@@ -536,9 +536,7 @@ if (shapiro_g$p.value > 0.05 & levene_g$`Pr(>F)`[1] > 0.05) {
 }
 
 
-# ----------------- POLYPS -----------------
-cat("\n================= POLYPS BETWEEN SPECIES =================\n")
-
+# polyps
 polyps_model <- aov(Polyps_change ~ Species, data = data)
 shapiro_p <- shapiro.test(residuals(polyps_model))
 levene_p  <- car::leveneTest(Polyps_change ~ Species, data = data)
@@ -609,13 +607,83 @@ species_summary <- data %>%
   select(Species, n_growth, Growth_mean_SE, n_polyps, Polyps_mean_SE)
 
 # print in console
-cat("\n================= SUMMARY TABLE: Mean ± SE per Species =================\n")
 print(species_summary)
 
-# Export to csv
+# export to csv
 write.csv(species_summary,
           file.path(out_dir, "species_mean_SE_summary.csv"),
           row.names = FALSE)
 
 cat("\n Summary table saved to:", normalizePath(file.path(out_dir, "species_mean_SE_summary.csv")), "\n")
+```
+```{r}
+install.packages("tidyverse")
+install.packages("lmerTest")
+install.packages("ggpubr")
+install.packages("emmeans")
+```
+
+
+```{r}
+#got suggestion to consider running repeated measures analysis. since half of data does not meet assumptions, will use non-parametric LMM
+
+# loading packages
+library(tidyverse)
+library(lmerTest)
+library(emmeans)
+library(ggpubr)
+
+# reading df 
+df <- read.csv("Coral_data.csv")  # slightly different headers, but same data as other csv
+
+# adding factors
+df$System <- factor(df$System, levels = c("HML", "GNV", "GAL"))
+df$Species <- factor(df$Species, levels = c("Swiftia exserta", "Thesea nivea", "Muricea pendula"))
+df$CoralID <- factor(df$CoralID)
+
+# assigning same species colors as above
+species_colors <- c("Swiftia exserta" = "orange",
+                    "Thesea nivea" = "purple",
+                    "Muricea pendula" = "white")
+
+# rank transforming to reduce effect of outliers
+df <- df %>% 
+  mutate(Growth_rank = rank(Growth),
+         PolypRetention_rank = rank(PolypRetention))
+
+###  fitting LMMs per species, getting pairwise comparisons, and printing results
+
+results_growth <- list()
+results_polyp <- list()
+pairwise_growth_df <- list()
+pairwise_polyp_df <- list()
+
+for(sp in levels(df$Species)){
+  df_sp <- df %>% filter(Species == sp)
+  
+  # lmm
+  lmm_g <- lmer(Growth_rank ~ System + (1|CoralID), data = df_sp)
+  lmm_p <- lmer(PolypRetention_rank ~ System + (1|CoralID), data = df_sp)
+  
+  # print
+  cat("\n\n--- Species:", sp, "---\n")
+  cat("Growth LMM:\n")
+  print(anova(lmm_g))
+  cat("\nPolyp Retention LMM:\n")
+  print(anova(lmm_p))
+  
+  # pairwise comparisons (BH adjusted)
+  emm_g <- emmeans(lmm_g, pairwise ~ System, adjust = "BH")
+  emm_p <- emmeans(lmm_p, pairwise ~ System, adjust = "BH")
+  
+  # print pairwise
+  cat("\nPairwise comparisons for Growth:\n")
+  print(emm_g$contrasts)
+  cat("\nPairwise comparisons for Polyp Retention:\n")
+  print(emm_p$contrasts)
+  
+  # save
+  results_growth[[sp]] <- list(lmm = lmm_g, pairwise = emm_g$contrasts)
+  results_polyp[[sp]] <- list(lmm = lmm_p, pairwise = emm_p$contrasts)
+  
 ```
